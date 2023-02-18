@@ -60,5 +60,11 @@ Free forever vs free for 12 months Explore free for 12 months and always free op
 **Crudder Conceptual Diagram**
 https://lucid.app/lucidchart/53c1cf25-169e-47ce-bdd2-ab432786e02f/edit?viewport_loc=-146%2C64%2C2220%2C974%2C0_0&invitationId=inv_aef3bde5-3d03-48da-872a-6afadd78656f
 
+![image](https://user-images.githubusercontent.com/36946649/219843044-2b005f9c-8176-48a9-915b-744a40b05428.png)
+
+
 **Crudder Logical diagram**
 https://lucid.app/lucidchart/eef66c76-5f96-4589-be9f-4e8d265a954f/edit?viewport_loc=-1692%2C-462%2C2220%2C974%2C0_0&invitationId=inv_836ecba8-5036-4dc2-afe1-3294eff17186
+
+![Crudder Logical diagram](https://user-images.githubusercontent.com/36946649/219843114-46ec443b-d980-4ba2-8107-66ace5554531.png)
+
