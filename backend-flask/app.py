@@ -54,8 +54,8 @@ processor = BatchSpanProcessor(OTLPSpanExporter())
 provider.add_span_processor(processor)
 
 # X-ray ------
-#xray_url = os.getenv("AWS_XRAY_URL")
-#xray_recorder.configure(service='backend-flask', dynamic_naming=xray_url)
+xray_url = os.getenv("AWS_XRAY_URL")
+xray_recorder.configure(service='backend-flask', dynamic_naming=xray_url)
 
 # Show this in the logs within the backend-flask app (STDOUT)
 #simple_processor = SimpleSpanProcessor(ConsoleSpanExporter())
@@ -67,7 +67,7 @@ tracer = trace.get_tracer(__name__)
 app = Flask(__name__)
 
 # X-ray ------
-#XRayMiddleware(app, xray_recorder)
+XRayMiddleware(app, xray_recorder)
 
 #Honeycomb--
 # Initialize automatic instrumentation with Flask
