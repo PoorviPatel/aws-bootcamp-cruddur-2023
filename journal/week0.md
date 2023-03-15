@@ -177,3 +177,24 @@ aws budgets create-budget \
     --budget file://aws/json/budget.json \
     --notifications-with-subscribers file://aws/json/budget-notifications-with-subscribers.json
 ```
+
+### Security
+
+Set MFA
+
+Create an organization unit
+
+Create Cloudtrail
+- AWS -> Cloudtrail -> awsbootcamp
+- AWS kms alias
+- Set attributes, log events and create
+- Set management events (Data event and insights event have some charges)
+
+Create IAM users 
+- IAM roles vs Policies
+- Create Role -> AWS service -> EC2
+- Add Permissions -> Administrators Access
+- Create Policy
+- Security Audit
+
+Enable AWS organization SCP
