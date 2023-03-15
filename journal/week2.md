@@ -4,9 +4,23 @@
 
 When creating a new dataset in Honeycomb it will provide all these installation insturctions
 
+Need to grab the API key from your honeycomb account:
 
+```sh
+export HONEYCOMB_API_KEY=""
+export HONEYCOMB_SERVICE_NAME="Cruddur"
+gp env HONEYCOMB_API_KEY=""
+gp env HONEYCOMB_SERVICE_NAME="Cruddur"
+```
+Add the Env Vars to backend-flask in docker compose
 
-We'll add the following files to our `requirements.txt`
+```yml
+OTEL_EXPORTER_OTLP_ENDPOINT: "https://api.honeycomb.io"
+OTEL_EXPORTER_OTLP_HEADERS: "x-honeycomb-team=${HONEYCOMB_API_KEY}"
+OTEL_SERVICE_NAME: "${HONEYCOMB_SERVICE_NAME}"
+```
+
+Add the following files to our `requirements.txt`
 
 ```
 opentelemetry-api 
@@ -16,13 +30,13 @@ opentelemetry-instrumentation-flask
 opentelemetry-instrumentation-requests
 ```
 
-We'll install these dependencies:
+Install the dependencies:
 
 ```sh
 pip install -r requirements.txt
 ```
 
-Add to the `app.py`
+Add to `app.py`
 
 ```py
 from opentelemetry import trace
@@ -50,32 +64,32 @@ FlaskInstrumentor().instrument_app(app)
 RequestsInstrumentor().instrument()
 ```
 
-Add teh following Env Vars to `backend-flask` in docker compose
+Add to home_activities.py
 
-```yml
-OTEL_EXPORTER_OTLP_ENDPOINT: "https://api.honeycomb.io"
-OTEL_EXPORTER_OTLP_HEADERS: "x-honeycomb-team=${HONEYCOMB_API_KEY}"
-OTEL_SERVICE_NAME: "${HONEYCOMB_SERVICE_NAME}"
+```py
+from opentelemetry import trace
 ```
 
-You'll need to grab the API key from your honeycomb account:
-
-```sh
-export HONEYCOMB_API_KEY=""
-export HONEYCOMB_SERVICE_NAME="Cruddur"
-gp env HONEYCOMB_API_KEY=""
-gp env HONEYCOMB_SERVICE_NAME="Cruddur"
+```py
+tracer = trace.get_tracer("home.activities")
 ```
+
+```py
+def run():
+    with tracer.start_as_current_span("home-activites-mock-data"):
+      span = trace.get_current_span()
+      now = datetime.now(timezone.utc).astimezone()
+      span.set_attribute("app.now", now.isoformat())
+```
+
+```py
+  span.set_attribute("app.result_length", len(results))
+      return results
+```     
 
 ## X-Ray
 
 ### Instrument AWS X-Ray for Flask
-
-
-```sh
-export AWS_REGION="ca-central-1"
-gp env AWS_REGION="ca-central-1"
-```
 
 Add to the `requirements.txt`
 
@@ -83,7 +97,7 @@ Add to the `requirements.txt`
 aws-xray-sdk
 ```
 
-Install pythonpendencies
+Install python dependencies
 
 ```sh
 pip install -r requirements.txt
@@ -102,7 +116,8 @@ XRayMiddleware(app, xray_recorder)
 
 ### Setup AWS X-Ray Resources
 
-Add `aws/json/xray.json`
+Create file aws/json/xray.json
+Add to xray.json
 
 ```json
 {
@@ -122,6 +137,8 @@ Add `aws/json/xray.json`
 }
 ```
 
+AWS Xray Create group
+
 ```sh
 FLASK_ADDRESS="https://4567-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}"
 aws xray create-group \
@@ -133,11 +150,11 @@ aws xray create-group \
 aws xray create-sampling-rule --cli-input-json file://aws/json/xray.json
 ```
 
- [Install X-ray Daemon](https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon.html)
-
-[Github aws-xray-daemon](https://github.com/aws/aws-xray-daemon)
-[X-Ray Docker Compose example](https://github.com/marjamis/xray/blob/master/docker-compose.yml)
-
+ Install X-ray Daemon
+ 
+```sh
+aws-xray-daemon-linux-3.x.zip
+```
 
 ```sh
  wget https://s3.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-3.x.deb
@@ -159,7 +176,7 @@ aws xray create-sampling-rule --cli-input-json file://aws/json/xray.json
       - 2000:2000/udp
 ```
 
-We need to add these two env vars to our backend-flask in our `docker-compose.yml` file
+Add two env vars to backend-flask in docker-compose.yml file
 
 ```yml
       AWS_XRAY_URL: "*4567-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}*"
@@ -175,6 +192,60 @@ aws xray get-service-graph --start-time $(($EPOCH-600)) --end-time $EPOCH
 
 ### Xray SUbsegments
 
+Add to app.py
+
+```py
+@app.route("/api/activities/@<string:handle>", methods=['GET'])
+@xray_recorder.capture('activities_users')
+def data_handle(handle):
+  model = UserActivities.run(handle)
+  if model['errors'] is not None:
+    return model['errors'], 422
+  else:
+    return model['data'], 200
+```
+
+Add to user_Activities.py
+
+```py
+from datetime import datetime, timedelta, timezone
+from aws_xray_sdk.core import xray_recorder
+class UserActivities:
+  def run(user_handle):
+    try:
+      model = {
+        'errors': None,
+        'data': None
+      }
+
+      now = datetime.now(timezone.utc).astimezone()
+      
+      if user_handle == None or len(user_handle) < 1:
+        model['errors'] = ['blank_user_handle']
+      else:
+        now = datetime.now()
+        results = [{
+          'uuid': '248959df-3079-4947-b847-9e0892d1bab4',
+          'handle':  'Andrew Brown',
+          'message': 'Cloud is fun!',
+          'created_at': (now - timedelta(days=1)).isoformat(),
+          'expires_at': (now + timedelta(days=31)).isoformat()
+        }]
+        model['data'] = results
+
+      subsegment = xray_recorder.begin_subsegment('mock-data')
+      # xray ---
+      dict = {
+        "now": now.isoformat(),
+        "results-size": len(model['data'])
+      }
+      subsegment.put_metadata('key', dict, 'namespace')
+      xray_recorder.end_subsegment()
+    finally:  
+    #  # Close the segment
+      xray_recorder.end_subsegment()
+    return model
+```
 
 ## CloudWatch Logs
 
@@ -217,12 +288,12 @@ def after_request(response):
     return response
 ```
 
-We'll log something in an API endpoint
+Log something in an API endpoint
 ```py
 LOGGER.info('Hello Cloudwatch! from  /api/activities/home')
 ```
 
-Set the env var in your backend-flask for `docker-compose.yml`
+Set the env var in backend-flask for docker-compose.yml
 
 ```yml
       AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
@@ -230,12 +301,7 @@ Set the env var in your backend-flask for `docker-compose.yml`
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
 ```
 
-> passing AWS_REGION doesn't seems to get picked up by boto3 so pass default region instead
-
-
 ## Rollbar
-
-https://rollbar.com/
 
 Create a new project in Rollbar called `Cruddur`
 
@@ -247,20 +313,20 @@ blinker
 rollbar
 ```
 
-Install deps
+Install dependencies
 
 ```sh
 pip install -r requirements.txt
 ```
 
-We need to set our access token
+Setup access token
 
 ```sh
 export ROLLBAR_ACCESS_TOKEN=""
 gp env ROLLBAR_ACCESS_TOKEN=""
 ```
 
-Add to backend-flask for `docker-compose.yml`
+Add to backend-flask for docker-compose.yml
 
 ```yml
 ROLLBAR_ACCESS_TOKEN: "${ROLLBAR_ACCESS_TOKEN}"
@@ -293,7 +359,7 @@ def init_rollbar():
     got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
 ```
 
-We'll add an endpoint just for testing rollbar to `app.py`
+Add an endpoint just for testing rollbar to `app.py`
 
 ```py
 @app.route('/rollbar/test')
@@ -301,5 +367,65 @@ def rollbar_test():
     rollbar.report_message('Hello World!', 'warning')
     return "Hello World!"
 ```
+
 ### Setup Codespace
+
+Create folder in main called devcontainer
+Create file to devcontainers called devcontainer.json
+
+To add Env vars, add code to devcontainer.json
+
+```json
+from datetime import datetime, timedelta, timezone
+from aws_xray_sdk.core import xray_recorder
+class UserActivities:
+  def run(user_handle):
+    try:
+      model = {
+        'errors': None,
+        'data': None
+      }
+
+      now = datetime.now(timezone.utc).astimezone()
+      
+      if user_handle == None or len(user_handle) < 1:
+        model['errors'] = ['blank_user_handle']
+      else:
+        now = datetime.now()
+        results = [{
+          'uuid': '248959df-3079-4947-b847-9e0892d1bab4',
+          'handle':  'Andrew Brown',
+          'message': 'Cloud is fun!',
+          'created_at': (now - timedelta(days=1)).isoformat(),
+          'expires_at': (now + timedelta(days=31)).isoformat()
+        }]
+        model['data'] = results
+
+      subsegment = xray_recorder.begin_subsegment('mock-data')
+      # xray ---
+      dict = {
+        "now": now.isoformat(),
+        "results-size": len(model['data'])
+      }
+      subsegment.put_metadata('key', dict, 'namespace')
+      xray_recorder.end_subsegment()
+    finally:  
+    #  # Close the segment
+      xray_recorder.end_subsegment()
+    return model
+```
+
+Update env vars for backend-flask in docker-compose.yml to use codespace 
+
+```yml
+      FRONTEND_URL: "https://${CODESPACE_NAME}-3000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+      BACKEND_URL: "https://${CODESPACE_NAME}-4567.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+```
+
+Update env vars for frontend-react-js in docker-compose.yml to use codespace 
+
+```yml
+REACT_APP_BACKEND_URL: "https://${CODESPACE_NAME}-4567.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+```
+
 
