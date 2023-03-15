@@ -214,6 +214,113 @@ class NotificationsActivities:
     return results
 ```    
 
+### Frontend Notification endpoint
+
+- Add the below code to Frontend-react-js  ->  src  ->  App.js
+
+```js
+import NotificationsFeedPage from './pages/NotificationsFeedPage';
+
+  {
+    path: "/notifications",
+    element: <NotificationsFeedPage />
+  },
+```
+
+Create new files under pages
+-NotificationsFeedPages.js
+-NotificationsFeedPages.css
+
+
+- Add the code in NotificationsFeedPages.js
+```js
+import './NotificationsFeedPage.css';
+import React from "react";
+
+import DesktopNavigation  from '../components/DesktopNavigation';
+import DesktopSidebar     from '../components/DesktopSidebar';
+import ActivityFeed from '../components/ActivityFeed';
+import ActivityForm from '../components/ActivityForm';
+import ReplyForm from '../components/ReplyForm';
+
+// [TODO] Authenication
+import Cookies from 'js-cookie'
+
+export default function NotificationsFeedPage() {
+  const [activities, setActivities] = React.useState([]);
+  const [popped, setPopped] = React.useState(false);
+  const [poppedReply, setPoppedReply] = React.useState(false);
+  const [replyActivity, setReplyActivity] = React.useState({});
+  const [user, setUser] = React.useState(null);
+  const dataFetchedRef = React.useRef(false);
+
+  const loadData = async () => {
+    try {
+      const backend_url = `${process.env.REACT_APP_BACKEND_URL}/api/activities/notifications`
+      const res = await fetch(backend_url, {
+        method: "GET"
+      });
+      let resJson = await res.json();
+      if (res.status === 200) {
+        setActivities(resJson)
+      } else {
+        console.log(res)
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const checkAuth = async () => {
+    console.log('checkAuth')
+    // [TODO] Authenication
+    if (Cookies.get('user.logged_in')) {
+      setUser({
+        display_name: Cookies.get('user.name'),
+        handle: Cookies.get('user.username')
+      })
+    }
+  };
+
+  React.useEffect(()=>{
+    //prevents double call
+    if (dataFetchedRef.current) return;
+    dataFetchedRef.current = true;
+
+    loadData();
+    checkAuth();
+  }, [])
+
+  return (
+    <article>
+      <DesktopNavigation user={user} active={'notifications'} setPopped={setPopped} />
+      <div className='content'>
+        <ActivityForm  
+          popped={popped}
+          setPopped={setPopped} 
+          setActivities={setActivities} 
+        />
+        <ReplyForm 
+          activity={replyActivity} 
+          popped={poppedReply} 
+          setPopped={setPoppedReply} 
+          setActivities={setActivities} 
+          activities={activities} 
+        />
+        <ActivityFeed 
+          title="Notifications" 
+          setReplyActivity={setReplyActivity} 
+          setPopped={setPoppedReply} 
+          activities={activities} 
+        />
+      </div>
+      <DesktopSidebar user={user} />
+    </article>
+  );
+}
+```
+  
+
 ### Adding DynamoDB Local and Postgres
 
 Add below code to docker compose file, add below volumes:
@@ -300,6 +407,40 @@ volumes:
     driver: local
 ```
 
+### Security
 
+AWS Security manager -> Aws Secret manager
+or
+Hashicorp Vault
 
+Login to AWS console -> Aws Secrets manager -> saves the secrets
+- Choose secret type
+- Enter key value
+- Enter secret name
+- Enter tags
+- Configure automatic rotation -> Auto rotation
+
+AWS Inspector / Clair
+- To check docker container  images vulneribilities
+- AWS -> Inspector 
+        - 15 days trial
+        - Activate inspector
+        - scan -> Vulnerebility 
+               -> Instance
+               -> Container repository
+               -> Lambda function
+               -> All findings
+               -> ECR
+       - There are tutorials to learn
+           
+Snyk Container Security
+- To check Vulnerebilities
+- Contain test (Image file name)
+
+Running container in AWS
+- AWS ECS
+- AWS EKS
+- AWS Fargarte
+- AWS App Runner
+- AWS copilot
 
