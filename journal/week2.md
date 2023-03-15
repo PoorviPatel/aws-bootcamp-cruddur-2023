@@ -190,7 +190,7 @@ EPOCH=$(date +%s)
 aws xray get-service-graph --start-time $(($EPOCH-600)) --end-time $EPOCH
 ```
 
-### Xray SUbsegments
+### Xray Subsegments
 
 Add to app.py
 
@@ -242,7 +242,7 @@ class UserActivities:
       subsegment.put_metadata('key', dict, 'namespace')
       xray_recorder.end_subsegment()
     finally:  
-    #  # Close the segment
+    ## Close the segment
       xray_recorder.end_subsegment()
     return model
 ```
@@ -375,44 +375,44 @@ Create file to devcontainers called devcontainer.json
 
 To add Env vars, add code to devcontainer.json
 
-```json
-from datetime import datetime, timedelta, timezone
-from aws_xray_sdk.core import xray_recorder
-class UserActivities:
-  def run(user_handle):
-    try:
-      model = {
-        'errors': None,
-        'data': None
-      }
+```
+{
+	"name": "Cruddur Configuration",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/devcontainers/features/aws-cli:1": {}
+	},
+	"remoteEnv": {
+		"AWS_CLI_AUTO_PROMPT": "on-partial"
+	},	
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"ms-python.python",
+				"vscodevim.vim"
+			],
+			"settings": {
+				"terminal.integrated.fontSize": 20,
+				"editor.fontSize": 20,
+				"workbench.colorTheme": "Default Dark+ Experimental"
+			}
+		}
+		
 
-      now = datetime.now(timezone.utc).astimezone()
-      
-      if user_handle == None or len(user_handle) < 1:
-        model['errors'] = ['blank_user_handle']
-      else:
-        now = datetime.now()
-        results = [{
-          'uuid': '248959df-3079-4947-b847-9e0892d1bab4',
-          'handle':  'Andrew Brown',
-          'message': 'Cloud is fun!',
-          'created_at': (now - timedelta(days=1)).isoformat(),
-          'expires_at': (now + timedelta(days=31)).isoformat()
-        }]
-        model['data'] = results
 
-      subsegment = xray_recorder.begin_subsegment('mock-data')
-      # xray ---
-      dict = {
-        "now": now.isoformat(),
-        "results-size": len(model['data'])
-      }
-      subsegment.put_metadata('key', dict, 'namespace')
-      xray_recorder.end_subsegment()
-    finally:  
-    #  # Close the segment
-      xray_recorder.end_subsegment()
-    return model
+	}
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "devcontainer"
+}
+
 ```
 
 Update env vars for backend-flask in docker-compose.yml to use codespace 
