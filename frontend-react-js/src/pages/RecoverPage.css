@@ -83,3 +83,7 @@ article.recover-article button[type='submit'] {
   background: rgba(149,0,255,1);
   color: #fff;
 }
+
+.success {
+  color: #fff;
+}
