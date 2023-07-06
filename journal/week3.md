@@ -84,9 +84,3 @@ aws cognito-idp admin-set-user-password\
     homeactivities.js
     profileinfo.js
     
-    
-    
-  
-    
-
-```sh
